@@ -1,3 +1,9 @@
+library(dplyr)
+library(ggplot2)
+library(rnaturalearth)
+library(ncdf4)
+library(RColorBrewer)
+library(reshape2)
 
 # Index function ----------------------------------------------------------
 get_CMISST_index <- function(response, oceanData=oceanData_ERSST,
@@ -248,3 +254,36 @@ makeTable <- function(cmisst = cmisst) {
   out
 }
 
+
+
+# Ocean data --------------------------------------------------------------
+load(file = here("data/oceanSSHData.RData"))
+load(file = here("data/oceanSSTData.RData"))
+load(file = here("data/land.Rdata"))
+
+# RREAS data --------------------------------------------------------------
+yoy_rockfish_all <- read_csv(here("data/rreas_juv_rockfish_all.csv"))
+
+response <- yoy_rockfish_all
+response$response_scaled <- scale(response$response)
+## SSH ---------------------------------------------------------------------
+cmisst <- get_CMISST_index(response = response[,c(1,3)], oceanData = oceanData_SSH, years = response$year,
+                           years.fit = response$year)
+ 
+makeCovarianceMap(input.season = 1, cmisst = cmisst)
+makeBiplot(input.season = 1, cmisst = cmisst)
+
+makeCovarianceMap(input.season = 2, cmisst = cmisst)
+makeBiplot(input.season = 2, cmisst = cmisst)
+
+# try lagged responses
+response$year_lagged <- response$year - 1
+
+cmisst2 <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanData_SSH, years = response$year_lagged,
+                           years.fit = response$year_lagged)
+
+makeCovarianceMap(input.season = 1, cmisst = cmisst2)
+makeBiplot(input.season = 1, cmisst = cmisst2)
+
+makeCovarianceMap(input.season = 2, cmisst = cmisst2)
+makeBiplot(input.season = 2, cmisst = cmisst2)
