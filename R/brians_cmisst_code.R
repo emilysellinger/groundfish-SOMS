@@ -1,16 +1,18 @@
 library(dplyr)
 library(ggplot2)
+library(readr)
 library(rnaturalearth)
 library(ncdf4)
 library(RColorBrewer)
 library(reshape2)
+library(here)
 
 # Index function ----------------------------------------------------------
 get_CMISST_index <- function(response, oceanData=oceanData_ERSST,
                              years=NA, years.fit=years.fit,
                              months=1:12,
-                             min.lon=232, max.lon=244,
-                             min.lat=30, max.lat=50) {
+                             min.lon=220, max.lon=246,
+                             min.lat=25, max.lat=62) {
   # Verify that the response is what we expect
   if (ncol(response)!=2) { print("incorrect data - requires a 2-column data frame with year and the response"); return(NA) }
   colnames(response)<-c("year","val")
@@ -120,7 +122,12 @@ makeCovarianceMap <- function(input.season = input.season, cmisst = cmisst) {
                     aut = "Autumn")
   covMap<-cmisst[[season]]
   lmt<-max(abs(covMap), na.rm=TRUE)
-  limits<-c(-lmt, lmt)
+  if(lmt > .5){
+    limits<-c(-lmt, lmt)
+  }else{
+    limits <- c(-.5, .5)
+  }
+  
   extent <- cmisst[[6]] # min, max of lat, long
   
   gg <- ggplot() + ggtitle(myTitle) +
@@ -260,30 +267,608 @@ makeTable <- function(cmisst = cmisst) {
 load(file = here("data/oceanSSHData.RData"))
 load(file = here("data/oceanSSTData.RData"))
 load(file = here("data/land.Rdata"))
+load(file = here("data/oceanMLData.RData"))
 
 # RREAS data --------------------------------------------------------------
 yoy_rockfish_all <- read_csv(here("data/rreas_juv_rockfish_all.csv"))
 
 response <- yoy_rockfish_all
-response$response_scaled <- scale(response$response)
+response$response_scaled <- as.vector(scale(response$response))
 ## SSH ---------------------------------------------------------------------
-cmisst <- get_CMISST_index(response = response[,c(1,3)], oceanData = oceanData_SSH, years = response$year,
+yoy_rockfish_all_ssh <- get_CMISST_index(response = response[,c(1,3)], oceanData = oceanData_SSH, years = response$year,
                            years.fit = response$year)
- 
-makeCovarianceMap(input.season = 1, cmisst = cmisst)
-makeBiplot(input.season = 1, cmisst = cmisst)
 
-makeCovarianceMap(input.season = 2, cmisst = cmisst)
-makeBiplot(input.season = 2, cmisst = cmisst)
 
+### Plots -------------------------------------------------------------------
+input.loocv <- FALSE
+# winter 
+makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_ssh)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SSH/winter/yoy_all.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/SSH/winter/yoy_all.png"))
+makeBiplot(input.season = 1, cmisst = yoy_rockfish_all_ssh)
+dev.off()
+
+# spring
+makeCovarianceMap(input.season = 2, cmisst = yoy_rockfish_all_ssh)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SSH/spring/yoy_all.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/SSH/spring/yoy_all.png"))
+makeBiplot(input.season = 2, cmisst = yoy_rockfish_all_ssh)
+dev.off()
+
+
+### Lag Plots ---------------------------------------------------------------
 # try lagged responses
 response$year_lagged <- response$year - 1
 
-cmisst2 <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanData_SSH, years = response$year_lagged,
+yoy_rockfish_all_ssh_lagged <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanData_SSH, years = response$year_lagged,
                            years.fit = response$year_lagged)
 
-makeCovarianceMap(input.season = 1, cmisst = cmisst2)
-makeBiplot(input.season = 1, cmisst = cmisst2)
+# winter 
+makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_ssh_lagged)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SSH/winter/yoy_all_lag_1yr.png"), width = 4, height = 4)
 
-makeCovarianceMap(input.season = 2, cmisst = cmisst2)
-makeBiplot(input.season = 2, cmisst = cmisst2)
+png(here("plots/rreas_yoy_ts/cmisst_index/SSH/winter/yoy_all_lag_1yr.png"))
+makeBiplot(input.season = 1, cmisst = yoy_rockfish_all_ssh_lagged)
+dev.off()
+
+# spring
+makeCovarianceMap(input.season = 2, cmisst = yoy_rockfish_all_ssh_lagged)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SSH/spring/yoy_all_lag_1yr.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/SSH/spring/yoy_all_lag_1yr.png"))
+makeBiplot(input.season = 2, cmisst = yoy_rockfish_all_ssh_lagged)
+dev.off()
+
+
+## SST ---------------------------------------------------------------------
+yoy_rockfish_all_sst <- get_CMISST_index(response = response[,c(1,3)], oceanData = oceanData_ERSST, years = response$year,
+                                         years.fit = response$year)
+
+
+### Plots -------------------------------------------------------------------
+# winter 
+makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_sst)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SST/winter/yoy_all.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/SST/winter/yoy_all.png"))
+makeBiplot(input.season = 1, cmisst = yoy_rockfish_all_sst)
+dev.off()
+
+# spring
+makeCovarianceMap(input.season = 2, cmisst = yoy_rockfish_all_sst)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SST/spring/yoy_all.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/SST/spring/yoy_all.png"))
+makeBiplot(input.season = 2, cmisst = yoy_rockfish_all_sst)
+dev.off()
+
+
+### Lag Plots ---------------------------------------------------------------
+# try lagged responses
+response$year_lagged <- response$year - 1
+
+yoy_rockfish_all_sst_lagged <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanData_ERSST, years = response$year_lagged,
+                                                years.fit = response$year_lagged)
+
+# winter 
+makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_sst_lagged)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SST/winter/yoy_all_lag_1yr.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/SST/winter/yoy_all_lag_1yr.png"))
+makeBiplot(input.season = 1, cmisst = yoy_rockfish_all_sst_lagged)
+dev.off()
+
+# spring
+makeCovarianceMap(input.season = 2, cmisst = yoy_rockfish_all_sst_lagged)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SST/spring/yoy_all_lag_1yr.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/SST/spring/yoy_all_lag_1yr.png"))
+makeBiplot(input.season = 2, cmisst = yoy_rockfish_all_sst_lagged)
+dev.off()
+
+
+
+## Mix Layer depth ---------------------------------------------------------
+yoy_rockfish_all_ml <- get_CMISST_index(response = response[c(9:38),c(1,3)], oceanData = oceanMLData, years = response$year[9:38],
+                                         years.fit = response$year[9:38])
+
+### Plots -------------------------------------------------------------------
+# winter 
+makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_ml)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/ML/winter/yoy_all.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/ML/winter/yoy_all.png"))
+makeBiplot(input.season = 1, cmisst = yoy_rockfish_all_ml)
+dev.off()
+
+# spring
+makeCovarianceMap(input.season = 2, cmisst = yoy_rockfish_all_ml)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/ML/spring/yoy_all.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/ML/spring/yoy_all.png"))
+makeBiplot(input.season = 2, cmisst = yoy_rockfish_all_ml)
+dev.off()
+
+
+### Lag Plots ---------------------------------------------------------------
+# try lagged responses
+#response$year_lagged <- response$year - 1
+
+yoy_rockfish_all_ml_lagged <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanMLData, years = response$year_lagged[10:39],
+                                                years.fit = response$year_lagged[10:39])
+
+# winter 
+makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_ml_lagged)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/ML/winter/yoy_all_lag_1yr.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/ML/winter/yoy_all_lag_1yr.png"))
+makeBiplot(input.season = 1, cmisst = yoy_rockfish_all_ml_lagged)
+dev.off()
+
+# spring
+makeCovarianceMap(input.season = 2, cmisst = yoy_rockfish_all_ml_lagged)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/ML/spring/yoy_all_lag_1yr.png"), width = 4, height = 4)
+
+png(here("plots/rreas_yoy_ts/cmisst_index/ML/spring/yoy_all_lag_1yr.png"))
+makeBiplot(input.season = 2, cmisst = yoy_rockfish_all_ml_lagged)
+dev.off()
+
+
+
+
+# RREAS Individual species ------------------------------------------------
+yoy_rockfish_spp <- read_csv(here("data/rreas_juv_rockfish_by_species.csv"))
+
+yoy_rockfish_spp <- yoy_rockfish_spp %>% 
+  mutate(rreas.yoy.bocaccio.scaled = as.vector(scale(rreas.yoy.bocaccio)),
+         rreas.yoy.chili.scaled = as.vector(scale(rreas.yoy.chili)),
+         rreas.yoy.halfbanded.scaled = as.vector(scale(rreas.yoy.halfbanded)),
+         rreas.yoy.shortbelly.scaled = as.vector(scale(rreas.yoy.shortbelly)),
+         rreas.yoy.widow.scaled = as.vector(scale(rreas.yoy.widow)),
+         rreas.yoy.ytail.scaled = as.vector(scale(rreas.yoy.ytail)))
+
+
+yoy_species <- c("bocaccio", "chilipepper", "halfbanded", "shortbelly", "widow", "yellowtail")
+
+
+
+## SSH ---------------------------------------------------------------------
+yoy_cmisst_ssh <- list()
+for(i in 1:length(yoy_species)){
+  
+  df <- yoy_rockfish_spp[,c(1, (i+8))]
+  
+  cmisst <- get_CMISST_index(response = df, oceanData = oceanData_SSH,
+                             years = df$year, years.fit = df$year)
+  
+  yoy_cmisst_ssh[[i]] <- cmisst
+}
+names(yoy_cmisst_ssh) <- yoy_species
+
+save(yoy_cmisst_ssh, file = here("data/yoy_cmisst_ssh.rds"))
+
+## SST ---------------------------------------------------------------------
+yoy_cmisst_sst <- list()
+for(i in 1:length(yoy_species)){
+  
+  df <- yoy_rockfish_spp[,c(1, (i+8))]
+  
+  cmisst <- get_CMISST_index(response = df, oceanData = oceanData_ERSST,
+                             years = df$year, years.fit = df$year)
+  
+  yoy_cmisst_sst[[i]] <- cmisst
+}
+names(yoy_cmisst_sst) <- yoy_species
+
+save(yoy_cmisst_sst, file = here("data/yoy_cmisst_sst.rds"))
+
+
+
+# Mixed layer -------------------------------------------------------------
+yoy_cmisst_ml <- list()
+for(i in 1:length(yoy_species)){
+    
+    df <- yoy_rockfish_spp[c(9:38),c(1, (i+8))]
+    
+    cmisst <- get_CMISST_index(response = df, oceanData = oceanMLData,
+                               years = df$year, years.fit = df$year)
+    
+    yoy_cmisst_ml[[i]] <- cmisst
+}
+
+names(yoy_cmisst_ml) <- yoy_species
+
+save(yoy_cmisst_ml, file = here("data/yoy_cmisst_ml.rds"))
+
+
+
+## Plots -------------------------------------------------------------------
+# create file path for plots
+cov_map_ssh_fp <- here("plots/rreas_yoy_ts/covariance_maps/SSH")
+cov_map_sst_fp <- here("plots/rreas_yoy_ts/covariance_maps/SST")
+cov_map_ml_fp <- here("plots/rreas_yoy_ts/covariance_maps/ML")
+index_ssh_fp <- here("plots/rreas_yoy_ts/cmisst_index/SSH")
+index_sst_fp <- here("plots/rreas_yoy_ts/cmisst_index/SST")
+index_ml_fp <- here("plots/rreas_yoy_ts/cmisst_index/ML")
+
+# needed to remove error message
+input.loocv <- F
+
+# create plots
+for(i in 1:length(yoy_species)){
+  # stock name
+  png_name <- yoy_species[i]
+  
+  # SSH plots
+  df_ssh <- yoy_cmisst_ssh[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_ssh)
+  ggsave(paste0(cov_map_ssh_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_ssh)
+  ggsave(paste0(cov_map_ssh_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  png(paste0(index_ssh_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_ssh)
+  dev.off()
+  
+  png( paste0(index_ssh_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_ssh)
+  dev.off()
+  
+  
+  
+  # SST plots
+  df_sst <- yoy_cmisst_sst[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_sst)
+  ggsave(paste0(cov_map_sst_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_sst)
+  ggsave(paste0(cov_map_sst_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  png(paste0(index_sst_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_sst)
+  dev.off()
+  
+  png( paste0(index_sst_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_sst)
+  dev.off()
+  
+  
+  # Mixed layer plots
+  # SST plots
+  df_ml <- yoy_cmisst_ml[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_ml)
+  ggsave(paste0(cov_map_ml_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_ml)
+  ggsave(paste0(cov_map_ml_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  png(paste0(index_ml_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_ml)
+  dev.off()
+  
+  png( paste0(index_ml_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_ml)
+  dev.off()
+}
+
+
+
+# Recruitment Deviations -------------------------------------
+# (pulled from Ward et al. 2024)
+species_df <- read_rds(here("data/species_assessment_sb_rec.rds"))
+black_CA <- read_csv(here("data/black_rockfish_CA_2023.csv"))
+black_CA <- black_CA %>% 
+  filter(Yr >= 1980)
+
+black_WA <- read_csv(here("data/black_rockfish_WA_2023.csv"))
+black_WA <- black_WA %>% 
+  filter(Yr >= 1980)
+
+
+black_OR <- read_csv(here("data/black_rockfish_OR_2023.csv"))
+black_OR <- black_OR %>% 
+  filter(Yr >= 1980)
+
+
+shortspine <- read_csv(here("data/shortspine_thornyhead_2023.csv"))
+shortspine <- shortspine %>% 
+  filter(Yr >= 1980)
+
+# update rec devs to most recent assessment 
+species_df$Black_rockfish_WA <- black_WA
+species_df$Black_rockfish_CA <- black_CA
+species_df$Black_rockfish_OR <- black_OR
+species_df$Shortspine_thornyhead <- shortspine
+
+species <- names(species_df)
+
+## SSH ------------------------------------------------------
+recdev_cmisst_ssh <- list()
+
+for(i in 1:length(species)){
+  df <- species_df[[i]]
+  
+  cmisst <- get_CMISST_index(response = df[,c("Yr", "dev")], oceanData = oceanData_SSH,
+                             years = df$Yr, years.fit = df$Yr)
+  
+  recdev_cmisst_ssh[[i]] <- cmisst
+  
+}
+
+names(recdev_cmisst_ssh) <- species
+
+# save
+save(recdev_cmisst_ssh, file = here("data/recdev_cmisst_ssh.rds"))
+
+## SST ---------------------------------------------------------------------
+# get cmisst sst
+recdev_cmisst_sst <- list()
+for(i in 1:length(species)){
+  df <- species_df[[i]]
+  
+  cmisst <- get_CMISST_index(response = df[,c("Yr", "dev")], oceanData = oceanData_ERSST,
+                             years = df$Yr, years.fit = df$Yr)
+  
+  recdev_cmisst_sst[[i]] <- cmisst
+  
+}
+
+names(recdev_cmisst_sst) <- species
+
+# save 
+save(recdev_cmisst_sst, file = here("data/recdev_cmisst_sst.rds"))
+
+## Mixed Layer depth -----------------------------------------------------------
+recdev_cmisst_ml <- list()
+for(i in 1:length(species)){
+  df <- species_df[[i]]
+  df <- df %>% 
+    filter(Yr >= 1991) %>% 
+    filter(Yr <= 2020)
+  
+  cmisst <- get_CMISST_index(response = df[,c("Yr", "dev")], oceanData = oceanMLData,
+                             years = df$Yr, years.fit = df$Yr)
+  
+  recdev_cmisst_ml[[i]] <- cmisst
+  
+}
+
+names(recdev_cmisst_ml) <- species
+
+# save 
+save(recdev_cmisst_ml, file = here("data/recdev_cmisst_ml.rds"))
+
+
+## Plots -----------------------------------------------------------------
+# create file path for plots
+cov_map_ssh_fp <- here("plots/rec_dev_ts/covariance_maps/SSH")
+cov_map_sst_fp <- here("plots/rec_dev_ts/covariance_maps/SST")
+cov_map_ml_fp <- here("plots/rec_dev_ts/covariance_maps/ML")
+index_ssh_fp <- here("plots/rec_dev_ts/cmisst_index/SSH")
+index_sst_fp <- here("plots/rec_dev_ts/cmisst_index/SST")
+index_ml_fp <- here("plots/rec_dev_ts/cmisst_index/ML")
+
+# species image names (species list has back slashes, want to remove)
+species_png_names <- c("black_rockfish_WA", "black_rockfish_CA", "blue_deacon_rockfish_CA", "bocaccio", "cabezon_OR",
+                       "cabezon_NCA", "cabezon_SCA", "california_scorpionfish", "chilipepper", "gopher_black-and-yellow_rockfish",
+                       "kelp_greenling_OR", "longspine_thornyhead", "pacific_ocean_perch", "rougheye_blackspotted_rockfish",
+                       "shortspine_thornyhead", "widow_rockfish", "yelloweye_rockfish", 
+                       "yellowtail_rockfish_N", "yellowtail_rockfish_S", "black_rockfish_OR")
+
+# remove error message
+input.loocv <- F
+
+# create plots
+for(i in 1:length(species)){
+  # stock name
+  png_name <- species_png_names[i]
+  
+  # SSH plots
+  df_ssh <- recdev_cmisst_ssh[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_ssh)
+  ggsave(paste0(cov_map_ssh_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_ssh)
+  ggsave(paste0(cov_map_ssh_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  png(paste0(index_ssh_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_ssh)
+  dev.off()
+  
+  png( paste0(index_ssh_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_ssh)
+  dev.off()
+  
+  
+  
+  # SST plots
+  df_sst <- recdev_cmisst_sst[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_sst)
+  ggsave(paste0(cov_map_sst_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_sst)
+  ggsave(paste0(cov_map_sst_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  png(paste0(index_sst_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_sst)
+  dev.off()
+  
+  png(paste0(index_sst_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_sst)
+  dev.off()
+  
+  
+  # Mixed Layer depth plots
+  df_ml <- recdev_cmisst_ml[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_ml)
+  ggsave(paste0(cov_map_ml_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_ml)
+  ggsave(paste0(cov_map_ml_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  png(paste0(index_ml_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_ml)
+  dev.off()
+  
+  png( paste0(index_ml_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_ml)
+  dev.off()
+}
+
+# # Species spawning biomass ------------------------------------------------
+# ## Create data frame -------------------------------------------------------------
+# load(here("data/clean_rec_devs.rds"))
+# 
+# species <- unique(clean_rec_devs$short_name)
+# 
+# species_df <- list()
+# for(i in 1:length(species)){
+#   sp <- species[i]
+#   
+#   df <- clean_rec_devs %>% 
+#     filter(short_name == sp) %>% 
+#     mutate(SpawnBio.scaled = as.vector(scale(SpawnBio))) %>% 
+#     filter(Yr >= 1980)
+#   
+#   species_df[[i]] <- df
+#   
+# }
+# names(species_df) <- species
+# 
+# # typo for cabezon NCA, end year 2030 instead of 2020
+# species_df$Cabezon_NCA$Yr[40] <- 2020
+# # going to trim some species time series because they jump around and that won't work with cmisst function
+# 
+# # cabezon OR to just 2015 since it skips from 2015 to 2020 
+# species_df$Cabezon_OR <- species_df$Cabezon_OR[-37,]
+# species_df$`Gopher/black-and-yellow_rockfish` <- species_df$`Gopher/black-and-yellow_rockfish`[-40,]
+# 
+# 
+# # save as separate rds file for later
+# write_rds(species_df, file = here("data/species_assessment_sb_rec.rds"))
+# 
+# 
+# ## SSH ---------------------------------------------------------------------
+# # get cmisst ssh for each species
+# species_cmisst_ssh <- list()
+# 
+# for(i in 1:length(species)){
+#   df <- species_df[[i]]
+#   
+#   cmisst <- get_CMISST_index(response = df[,c(1,6)], oceanData = oceanData_SSH,
+#                              years = df$Yr, years.fit = df$Yr)
+#   
+#   species_cmisst_ssh[[i]] <- cmisst
+#   
+# }
+# 
+# names(species_cmisst_ssh) <- species
+# 
+# # save
+# save(species_cmisst_ssh, file = here("data/species_cmisst_ssh.rds"))
+# 
+# ## SST ---------------------------------------------------------------------
+# # get cmisst sst
+# species_cmisst_sst <- list()
+# for(i in 1:length(species)){
+#   df <- species_df[[i]]
+#   
+#   cmisst <- get_CMISST_index(response = df[,c(1,6)], oceanData = oceanData_ERSST,
+#                              years = df$Yr, years.fit = df$Yr)
+#   
+#   species_cmisst_sst[[i]] <- cmisst
+#   
+# }
+# 
+# names(species_cmisst_sst) <- species
+# 
+# # save 
+# save(species_cmisst_sst, file = here("data/species_cmisst_sst.rds"))
+# 
+# 
+# ## Plots -------------------------------------------------------------------
+# # create file path for plots
+# cov_map_ssh_fp <- here("plots/spawning_biomass_ts/covariance_maps/SSH")
+# cov_map_sst_fp <- here("plots/spawning_biomass_ts/covariance_maps/SST")
+# index_ssh_fp <- here("plots/spawning_biomass_ts/cmisst_index/SSH")
+# index_sst_fp <- here("plots/spawning_biomass_ts/cmisst_index/SST")
+# 
+# # species image names (species list has back slashes, want to remove)
+# species_png_names <- c("black_rockfish_WA", "black_rockfish_CA", "blue_deacon_rockfish_CA", "bocaccio", "cabezon_OR",
+#                       "cabezon_NCA", "cabezon_SCA", "california_scorpionfish", "chilipepper", "gopher_black-and-yellow_rockfish",
+#                       "kelp_greenling_OR", "longspine_thornyhead", "pacific_ocean_perch", "rougheye_blackspotted_rockfish",
+#                       "shortspine_thornyhead", "widow_rockfish", "yelloweye_rockfish", "yellowtail_rockfish_N", "yellowtail_rockfish_S")
+# 
+# # remove error message
+# input.loocv <- F
+# 
+# # create plots
+# for(i in 1:length(species)){
+#   # stock name
+#   png_name <- species_png_names[i]
+#   
+#   # SSH plots
+#   df_ssh <- species_cmisst_ssh[[i]]
+#   
+#   # save as png
+#   makeCovarianceMap(input.season = 1, cmisst = df_ssh)
+#   ggsave(paste0(cov_map_ssh_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+#   
+#   
+#   makeCovarianceMap(input.season = 2, cmisst = df_ssh)
+#   ggsave(paste0(cov_map_ssh_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+#   
+#   
+#   png(paste0(index_ssh_fp, "/winter/", png_name, ".png"))
+#   makeBiplot(input.season = 1, cmisst = df_ssh)
+#   dev.off()
+#   
+#   png( paste0(index_ssh_fp, "/spring/", png_name, ".png"))
+#   makeBiplot(input.season = 2, cmisst = df_ssh)
+#   dev.off()
+#   
+#   
+#   
+#   # SST plots
+#   df_sst <- species_cmisst_sst[[i]]
+#   
+#   # save as png
+#   makeCovarianceMap(input.season = 1, cmisst = df_sst)
+#   ggsave(paste0(cov_map_sst_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+#   
+#   
+#   makeCovarianceMap(input.season = 2, cmisst = df_sst)
+#   ggsave(paste0(cov_map_sst_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+#   
+#   png(paste0(index_sst_fp, "/winter/", png_name, ".png"))
+#   makeBiplot(input.season = 1, cmisst = df_sst)
+#   dev.off()
+#   
+#   png( paste0(index_sst_fp, "/spring/", png_name, ".png"))
+#   makeBiplot(input.season = 2, cmisst = df_sst)
+#   dev.off()
+# }
