@@ -11,8 +11,8 @@ library(here)
 get_CMISST_index <- function(response, oceanData=oceanData_ERSST,
                              years=NA, years.fit=years.fit,
                              months=1:12,
-                             min.lon=220, max.lon=246,
-                             min.lat=25, max.lat=62) {
+                             min.lon=225, max.lon=246,
+                             min.lat=25, max.lat=50) {
   # Verify that the response is what we expect
   if (ncol(response)!=2) { print("incorrect data - requires a 2-column data frame with year and the response"); return(NA) }
   colnames(response)<-c("year","val")
@@ -59,10 +59,10 @@ get_CMISST_index <- function(response, oceanData=oceanData_ERSST,
   oceanData.s4.scl <- createSeasonalData(oceanData = oceanData, years = years, months = months, year_mo=year_mo, season = 4)
   
   # Get covariance between each cell's temperature and survival (only for fit years!!)
-  covs1<-apply(oceanData.s1.scl[,,as.character(years.fit)], 1:2, function(x) cov(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
-  covs2<-apply(oceanData.s2.scl[,,as.character(years.fit)], 1:2, function(x) cov(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
-  covs3<-apply(oceanData.s3.scl[,,as.character(years.fit)], 1:2, function(x) cov(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
-  covs4<-apply(oceanData.s4.scl[,,as.character(years.fit)], 1:2, function(x) cov(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
+  covs1<-apply(oceanData.s1.scl[,,as.character(years.fit)], 1:2, function(x) cor(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
+  covs2<-apply(oceanData.s2.scl[,,as.character(years.fit)], 1:2, function(x) cor(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
+  covs3<-apply(oceanData.s3.scl[,,as.character(years.fit)], 1:2, function(x) cor(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
+  covs4<-apply(oceanData.s4.scl[,,as.character(years.fit)], 1:2, function(x) cor(x, response$val[response$year %in% years.fit], use="pairwise.complete.obs"))
   
   #********************************************************************
   # Create the index (how similar is each year to the covariance map)
@@ -122,11 +122,12 @@ makeCovarianceMap <- function(input.season = input.season, cmisst = cmisst) {
                     aut = "Autumn")
   covMap<-cmisst[[season]]
   lmt<-max(abs(covMap), na.rm=TRUE)
-  if(lmt > .5){
-    limits<-c(-lmt, lmt)
-  }else{
-    limits <- c(-.5, .5)
-  }
+  # if(lmt > .5){
+  #   limits<-c(-lmt, lmt)
+  # }else{
+  #   limits <- c(-.5, .5)
+  # }
+  limits <- c(-1, 1)
   
   extent <- cmisst[[6]] # min, max of lat, long
   
@@ -134,7 +135,7 @@ makeCovarianceMap <- function(input.season = input.season, cmisst = cmisst) {
     geom_raster(data = melt(covMap), aes(x = Var1, y = Var2, fill=value)) +
     geom_sf(data=land, color="black", fill="grey", linewidth=0.25) +
     xlim(extent[3], extent[4]) + ylim(extent[1], extent[2]) +
-    scale_fill_gradientn(colours = myPalette(100),limits=limits,name="Covariance", na.value = "white") +
+    scale_fill_gradientn(colours = myPalette(100),limits=limits,name="Correlation", na.value = "white") +
     theme_classic() + theme(panel.border = element_rect(colour = "grey", fill=NA)) +
     labs(x = "Longitude", y = "Latitude")
   gg
@@ -270,20 +271,18 @@ load(file = here("data/land.Rdata"))
 load(file = here("data/oceanMLData.RData"))
 
 # RREAS data --------------------------------------------------------------
-yoy_rockfish_all <- read_csv(here("data/rreas_juv_rockfish_all.csv"))
+yoy_rockfish_all <- read_csv(here("data/rreas/rreas_juv_rockfish_all.csv"))
 
-response <- yoy_rockfish_all
-response$response_scaled <- as.vector(scale(response$response))
 ## SSH ---------------------------------------------------------------------
-yoy_rockfish_all_ssh <- get_CMISST_index(response = response[,c(1,3)], oceanData = oceanData_SSH, years = response$year,
-                           years.fit = response$year)
+yoy_rockfish_all_ssh <- get_CMISST_index(response = yoy_rockfish_all, oceanData = oceanSSHData, years = seq(2001, max(yoy_rockfish_all$year)),
+                           years.fit = seq(2001, max(yoy_rockfish_all$year)))
 
 
 ### Plots -------------------------------------------------------------------
 input.loocv <- FALSE
 # winter 
 makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_ssh)
-ggsave(here("plots/rreas_yoy_ts/covariance_maps/SSH/winter/yoy_all.png"), width = 4, height = 4)
+ggsave(here("plots/rreas_yoy_ts/covariance_maps/SSH/winter/yoy_all_2001-2022.png"), width = 4, height = 4)
 
 png(here("plots/rreas_yoy_ts/cmisst_index/SSH/winter/yoy_all.png"))
 makeBiplot(input.season = 1, cmisst = yoy_rockfish_all_ssh)
@@ -300,10 +299,10 @@ dev.off()
 
 ### Lag Plots ---------------------------------------------------------------
 # try lagged responses
-response$year_lagged <- response$year - 1
+yoy_rockfish_all$year_lagged <- yoy_rockfish_all$year - 1
 
-yoy_rockfish_all_ssh_lagged <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanData_SSH, years = response$year_lagged,
-                           years.fit = response$year_lagged)
+yoy_rockfish_all_ssh_lagged <- get_CMISST_index(response = yoy_rockfish_all[,c(3,2)], oceanData = oceanSSHData, years = yoy_rockfish_all$year_lagged,
+                           years.fit = yoy_rockfish_all$year_lagged)
 
 # winter 
 makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_ssh_lagged)
@@ -323,8 +322,8 @@ dev.off()
 
 
 ## SST ---------------------------------------------------------------------
-yoy_rockfish_all_sst <- get_CMISST_index(response = response[,c(1,3)], oceanData = oceanData_ERSST, years = response$year,
-                                         years.fit = response$year)
+yoy_rockfish_all_sst <- get_CMISST_index(response = yoy_rockfish_all[,1:2], oceanData = oceanSSTData, years = yoy_rockfish_all$year,
+                                         years.fit = yoy_rockfish_all$year)
 
 
 ### Plots -------------------------------------------------------------------
@@ -347,10 +346,8 @@ dev.off()
 
 ### Lag Plots ---------------------------------------------------------------
 # try lagged responses
-response$year_lagged <- response$year - 1
-
-yoy_rockfish_all_sst_lagged <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanData_ERSST, years = response$year_lagged,
-                                                years.fit = response$year_lagged)
+yoy_rockfish_all_sst_lagged <- get_CMISST_index(response = yoy_rockfish_all[,c(3,2)], oceanData = oceanSSTData, years = yoy_rockfish_all$year_lagged,
+                                                years.fit = yoy_rockfish_all$year_lagged)
 
 # winter 
 makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_sst_lagged)
@@ -371,8 +368,8 @@ dev.off()
 
 
 ## Mix Layer depth ---------------------------------------------------------
-yoy_rockfish_all_ml <- get_CMISST_index(response = response[c(9:38),c(1,3)], oceanData = oceanMLData, years = response$year[9:38],
-                                         years.fit = response$year[9:38])
+yoy_rockfish_all_ml <- get_CMISST_index(response = yoy_rockfish_all[c(9:38),c(1,2)], oceanData = oceanMLData, years = yoy_rockfish_all$year[9:38],
+                                         years.fit = yoy_rockfish_all$year[9:38])
 
 ### Plots -------------------------------------------------------------------
 # winter 
@@ -396,8 +393,8 @@ dev.off()
 # try lagged responses
 #response$year_lagged <- response$year - 1
 
-yoy_rockfish_all_ml_lagged <- get_CMISST_index(response = response[,c(4,3)], oceanData = oceanMLData, years = response$year_lagged[10:39],
-                                                years.fit = response$year_lagged[10:39])
+yoy_rockfish_all_ml_lagged <- get_CMISST_index(response = yoy_rockfish_all[c(10:39),c(3,2)], oceanData = oceanMLData, years = yoy_rockfish_all$year_lagged[10:39],
+                                                years.fit = yoy_rockfish_all$year_lagged[10:39])
 
 # winter 
 makeCovarianceMap(input.season = 1, cmisst = yoy_rockfish_all_ml_lagged)
@@ -419,16 +416,7 @@ dev.off()
 
 
 # RREAS Individual species ------------------------------------------------
-yoy_rockfish_spp <- read_csv(here("data/rreas_juv_rockfish_by_species.csv"))
-
-yoy_rockfish_spp <- yoy_rockfish_spp %>% 
-  mutate(rreas.yoy.bocaccio.scaled = as.vector(scale(rreas.yoy.bocaccio)),
-         rreas.yoy.chili.scaled = as.vector(scale(rreas.yoy.chili)),
-         rreas.yoy.halfbanded.scaled = as.vector(scale(rreas.yoy.halfbanded)),
-         rreas.yoy.shortbelly.scaled = as.vector(scale(rreas.yoy.shortbelly)),
-         rreas.yoy.widow.scaled = as.vector(scale(rreas.yoy.widow)),
-         rreas.yoy.ytail.scaled = as.vector(scale(rreas.yoy.ytail)))
-
+yoy_rockfish_spp <- read_csv(here("data/rreas/rreas_juv_rockfish_by_species.csv"))
 
 yoy_species <- c("bocaccio", "chilipepper", "halfbanded", "shortbelly", "widow", "yellowtail")
 
@@ -438,31 +426,31 @@ yoy_species <- c("bocaccio", "chilipepper", "halfbanded", "shortbelly", "widow",
 yoy_cmisst_ssh <- list()
 for(i in 1:length(yoy_species)){
   
-  df <- yoy_rockfish_spp[,c(1, (i+8))]
+  df <- yoy_rockfish_spp[,c(1, (i+2))]
   
-  cmisst <- get_CMISST_index(response = df, oceanData = oceanData_SSH,
+  cmisst <- get_CMISST_index(response = df, oceanData = oceanSSHData,
                              years = df$year, years.fit = df$year)
   
   yoy_cmisst_ssh[[i]] <- cmisst
 }
 names(yoy_cmisst_ssh) <- yoy_species
 
-save(yoy_cmisst_ssh, file = here("data/yoy_cmisst_ssh.rds"))
+saveRDS(yoy_cmisst_ssh, file = here("data/processed/yoy_cmisst_ssh.rds"))
 
 ## SST ---------------------------------------------------------------------
 yoy_cmisst_sst <- list()
 for(i in 1:length(yoy_species)){
   
-  df <- yoy_rockfish_spp[,c(1, (i+8))]
+  df <- yoy_rockfish_spp[,c(1, (i+2))]
   
-  cmisst <- get_CMISST_index(response = df, oceanData = oceanData_ERSST,
+  cmisst <- get_CMISST_index(response = df, oceanData = oceanSSTData,
                              years = df$year, years.fit = df$year)
   
   yoy_cmisst_sst[[i]] <- cmisst
 }
 names(yoy_cmisst_sst) <- yoy_species
 
-save(yoy_cmisst_sst, file = here("data/yoy_cmisst_sst.rds"))
+saveRDS(yoy_cmisst_sst, file = here("data/processed/yoy_cmisst_sst.rds"))
 
 
 
@@ -470,7 +458,7 @@ save(yoy_cmisst_sst, file = here("data/yoy_cmisst_sst.rds"))
 yoy_cmisst_ml <- list()
 for(i in 1:length(yoy_species)){
     
-    df <- yoy_rockfish_spp[c(9:38),c(1, (i+8))]
+    df <- yoy_rockfish_spp[c(9:38),c(1, (i+2))]
     
     cmisst <- get_CMISST_index(response = df, oceanData = oceanMLData,
                                years = df$year, years.fit = df$year)
@@ -480,7 +468,7 @@ for(i in 1:length(yoy_species)){
 
 names(yoy_cmisst_ml) <- yoy_species
 
-save(yoy_cmisst_ml, file = here("data/yoy_cmisst_ml.rds"))
+saveRDS(yoy_cmisst_ml, file = here("data/processed/yoy_cmisst_ml.rds"))
 
 
 
@@ -565,25 +553,178 @@ for(i in 1:length(yoy_species)){
 }
 
 
+# RREAS indices -----------------------------------------------------------
+# instead of just CPUE from Mary's update, going to use indices Tanya created for some of the species from the rreas survey
+
+## data --------------------------------------------------------------------
+# load data
+canary <- read_csv(here("data/rreas/canary_indices.csv"))
+chilipepper <- read_csv(here("data/rreas/chilipepper_indices.csv"))
+widow <- read_csv(here("data/rreas/widow_indices.csv"))
+ytail_n <- read_csv(here("data/rreas/ytail_north_indices.csv"))
+ytail_coast <- read_csv(here("data/rreas/ytail_coastwide_indices.csv"))
+
+# combine to data frame
+rreas_indices <- list(canary = canary, chilipepper = chilipepper, widow = widow, 
+                      ytail_coast = ytail_coast, ytail_n = ytail_n)
+yoy_species <- c("canary", "chilipepper", "widow", "ytail_coast", "ytail_n")
+## SSH ---------------------------------------------------------------------
+yoy_index_cmisst_ssh <- list()
+for(i in 1:length(yoy_species)){
+  
+  df <- rreas_indices[[i]] %>% 
+    filter(YEAR <= 2023) %>% 
+    select(YEAR, est)
+  
+  cmisst <- get_CMISST_index(response = df, oceanData = oceanSSHData,
+                             years = df$YEAR, years.fit = df$YEAR)
+  
+  yoy_index_cmisst_ssh[[i]] <- cmisst
+}
+names(yoy_index_cmisst_ssh) <- yoy_species
+
+saveRDS(yoy_index_cmisst_ssh, file = here("data/processed/yoy_index_cmisst_ssh.rds"))
+
+## SST ---------------------------------------------------------------------
+yoy_index_cmisst_sst <- list()
+oceanData_ERSST <- oceanSSTData
+for(i in 1:length(yoy_species)){
+  
+  df <- rreas_indices[[i]]%>% 
+    filter(YEAR <= 2023) %>% 
+    select(YEAR, est)
+  
+  cmisst <- get_CMISST_index(response = df, oceanData = oceanData_ERSST,
+                             years = df$YEAR, years.fit = df$YEAR)
+  
+  yoy_index_cmisst_sst[[i]] <- cmisst
+}
+names(yoy_index_cmisst_sst) <- yoy_species
+
+saveRDS(yoy_index_cmisst_sst, file = here("data/processed/yoy_index_cmisst_sst.rds"))
+
+
+
+## Mixed layer -------------------------------------------------------------
+yoy_index_cmisst_ml <- list()
+for(i in 1:length(yoy_species)){
+  
+  df <- rreas_indices[[i]] %>% 
+    filter(YEAR <= 2019) %>% 
+    select(YEAR, est)
+  
+  cmisst <- get_CMISST_index(response = df, oceanData = oceanMLData,
+                             years = df$YEAR, years.fit = df$YEAR)
+  
+  yoy_index_cmisst_ml[[i]] <- cmisst
+}
+
+names(yoy_index_cmisst_ml) <- yoy_species
+
+saveRDS(yoy_index_cmisst_ml, file = here("data/processed/yoy_index_cmisst_ml.rds"))
+
+
+
+## Plots -------------------------------------------------------------------
+# create file path for plots
+cov_map_ssh_fp <- here("plots/rreas_yoy_indices/covariance_maps/SSH")
+cov_map_sst_fp <- here("plots/rreas_yoy_indices/covariance_maps/SST")
+cov_map_ml_fp <- here("plots/rreas_yoy_indices/covariance_maps/ML")
+index_ssh_fp <- here("plots/rreas_yoy_indices/cmisst_index/SSH")
+index_sst_fp <- here("plots/rreas_yoy_indices/cmisst_index/SST")
+index_ml_fp <- here("plots/rreas_yoy_indices/cmisst_index/ML")
+
+# create plots
+for(i in 1:length(yoy_species)){
+ 
+  # stock name
+  png_name <- yoy_species[i]
+  
+  # SSH plots
+  df_ssh <- yoy_index_cmisst_ssh[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_ssh)
+  ggsave(paste0(cov_map_ssh_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_ssh)
+  ggsave(paste0(cov_map_ssh_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  png(paste0(index_ssh_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_ssh)
+  dev.off()
+  
+  png( paste0(index_ssh_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_ssh)
+  dev.off()
+  
+  
+  
+  # SST plots
+  df_sst <- yoy_index_cmisst_sst[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_sst)
+  ggsave(paste0(cov_map_sst_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_sst)
+  ggsave(paste0(cov_map_sst_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  png(paste0(index_sst_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_sst)
+  dev.off()
+  
+  png(paste0(index_sst_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_sst)
+  dev.off()
+  
+  
+  # Mixed Layer depth plots
+  df_ml <- yoy_index_cmisst_ml[[i]]
+  
+  # save as png
+  makeCovarianceMap(input.season = 1, cmisst = df_ml)
+  ggsave(paste0(cov_map_ml_fp, "/winter/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  makeCovarianceMap(input.season = 2, cmisst = df_ml)
+  ggsave(paste0(cov_map_ml_fp, "/spring/", png_name, ".png"), width = 4, height = 4)
+  
+  
+  png(paste0(index_ml_fp, "/winter/", png_name, ".png"))
+  makeBiplot(input.season = 1, cmisst = df_ml)
+  dev.off()
+  
+  png( paste0(index_ml_fp, "/spring/", png_name, ".png"))
+  makeBiplot(input.season = 2, cmisst = df_ml)
+  dev.off()
+}
+
+
+
+
 
 # Recruitment Deviations -------------------------------------
 # (pulled from Ward et al. 2024)
-species_df <- read_rds(here("data/species_assessment_sb_rec.rds"))
-black_CA <- read_csv(here("data/black_rockfish_CA_2023.csv"))
+species_df <- readRDS(here("data/rec_devs/species_assessment_sb_rec.rds"))
+black_CA <- read_csv(here("data/rec_devs/black_rockfish_CA_2023.csv"))
 black_CA <- black_CA %>% 
   filter(Yr >= 1980)
 
-black_WA <- read_csv(here("data/black_rockfish_WA_2023.csv"))
+black_WA <- read_csv(here("data/rec_devs/black_rockfish_WA_2023.csv"))
 black_WA <- black_WA %>% 
   filter(Yr >= 1980)
 
 
-black_OR <- read_csv(here("data/black_rockfish_OR_2023.csv"))
+black_OR <- read_csv(here("data/rec_devs/black_rockfish_OR_2023.csv"))
 black_OR <- black_OR %>% 
   filter(Yr >= 1980)
 
 
-shortspine <- read_csv(here("data/shortspine_thornyhead_2023.csv"))
+shortspine <- read_csv(here("data/rec_devs/shortspine_thornyhead_2023.csv"))
 shortspine <- shortspine %>% 
   filter(Yr >= 1980)
 
@@ -601,7 +742,7 @@ recdev_cmisst_ssh <- list()
 for(i in 1:length(species)){
   df <- species_df[[i]]
   
-  cmisst <- get_CMISST_index(response = df[,c("Yr", "dev")], oceanData = oceanData_SSH,
+  cmisst <- get_CMISST_index(response = df[,c("Yr", "dev")], oceanData = oceanSSHData,
                              years = df$Yr, years.fit = df$Yr)
   
   recdev_cmisst_ssh[[i]] <- cmisst
@@ -611,7 +752,7 @@ for(i in 1:length(species)){
 names(recdev_cmisst_ssh) <- species
 
 # save
-save(recdev_cmisst_ssh, file = here("data/recdev_cmisst_ssh.rds"))
+saveRDS(recdev_cmisst_ssh, file = here("data/processed/recdev_cmisst_ssh.rds"))
 
 ## SST ---------------------------------------------------------------------
 # get cmisst sst
@@ -619,7 +760,7 @@ recdev_cmisst_sst <- list()
 for(i in 1:length(species)){
   df <- species_df[[i]]
   
-  cmisst <- get_CMISST_index(response = df[,c("Yr", "dev")], oceanData = oceanData_ERSST,
+  cmisst <- get_CMISST_index(response = df[,c("Yr", "dev")], oceanData = oceanSSTData,
                              years = df$Yr, years.fit = df$Yr)
   
   recdev_cmisst_sst[[i]] <- cmisst
@@ -629,7 +770,7 @@ for(i in 1:length(species)){
 names(recdev_cmisst_sst) <- species
 
 # save 
-save(recdev_cmisst_sst, file = here("data/recdev_cmisst_sst.rds"))
+saveRDS(recdev_cmisst_sst, file = here("data/processed/recdev_cmisst_sst.rds"))
 
 ## Mixed Layer depth -----------------------------------------------------------
 recdev_cmisst_ml <- list()
@@ -649,7 +790,7 @@ for(i in 1:length(species)){
 names(recdev_cmisst_ml) <- species
 
 # save 
-save(recdev_cmisst_ml, file = here("data/recdev_cmisst_ml.rds"))
+saveRDS(recdev_cmisst_ml, file = here("data/processed/recdev_cmisst_ml.rds"))
 
 
 ## Plots -----------------------------------------------------------------
@@ -739,23 +880,145 @@ for(i in 1:length(species)){
   dev.off()
 }
 
-# # Species spawning biomass ------------------------------------------------
-# ## Create data frame -------------------------------------------------------------
-# load(here("data/clean_rec_devs.rds"))
+
+
+# look at chilipepper before/after
+chili_before <- yoy_rockfish_spp %>% 
+  select(year, rreas.yoy.chili) %>% 
+  filter(year < 2014)
+chili_after <- yoy_rockfish_spp %>% 
+  select(year, rreas.yoy.chili) %>% 
+  filter(year >= 2014)
+
+# mix layer
+chili_ml_before <- get_CMISST_index(response = chili_before[9:31,], oceanData = oceanMLData,
+                           years = chili_before$year[9:31], years.fit = chili_before$year[9:31])
+
+
+chili_ml_after <- get_CMISST_index(response = chili_after[1:7,], oceanData = oceanMLData,
+                                    years = chili_after$year[1:7], years.fit = chili_after$year[1:7])
+# plots
+makeCovarianceMap(input.season = 1, cmisst = chili_ml_before)
+makeCovarianceMap(input.season = 2, cmisst = chili_ml_before)
+
+makeCovarianceMap(input.season = 1, cmisst = chili_ml_after)
+makeCovarianceMap(input.season = 2, cmisst = chili_ml_after)
+
+
+# ssh
+chili_ssh_before <- get_CMISST_index(response = chili_before[9:31,], oceanData = oceanSSHData,
+                                    years = chili_before$year[9:31], years.fit = chili_before$year[9:31])
+
+
+chili_ssh_after <- get_CMISST_index(response = chili_after[1:7,], oceanData = oceanSSHData,
+                                   years = chili_after$year[1:7], years.fit = chili_after$year[1:7])
+# plots
+# save as png
+makeCovarianceMap(input.season = 1, cmisst = chili_ssh_before)
+makeCovarianceMap(input.season = 2, cmisst = chili_ssh_before)
+
+makeCovarianceMap(input.season = 1, cmisst = chili_ssh_after)
+makeCovarianceMap(input.season = 2, cmisst = chili_ssh_after)
+
+
+# Before/After Marine Heatwave --------------------------------------------
+# going to look at covariance maps for before
+for(i in 1:length(species)){
+  df <- species_df[[i]]
+  sp <- species[i]
+  
+  min_yr <- min(df$Yr)
+  max_yr <- max(df$Yr)
+  
+  print(paste0(sp, ": ", min_yr, " - ", max_yr))
+  }
+# going to limit rec dev to stock assessments that have data through 2020
+recdev_df <- list("black_CA_recdev" = species_df$Black_rockfish_CA, "blue_deacon_CA_recdev" = species_df$`Blue/Deacon_rockfish_CA`,
+                    "cabezon_NCA_recdev" = species_df$Cabezon_NCA, "shortspine_thornyhead_recdev" = species_df$Shortspine_thornyhead, 
+                    "widow_recdev" = species_df$Widow_rockfish)
+# going to standardize columns between different lists
+for(i in 1:length(names(recdev_df))){
+  df <- recdev_df[[i]]
+  
+  df <- df %>% 
+    ungroup %>% 
+    mutate(year = Yr,
+           response = dev) %>% 
+    select(year, response)
+  
+  recdev_df[[i]] <- df
+}
+
+
+rreas_ts <- list()
+for(i in 1:6){
+  df <- yoy_rockfish_spp[,c(1, i+2)]
+  
+  colnames(df)[2] <- "response"
+  
+  rreas_ts[[i]] <- df
+}
+names(rreas_ts) <- c( "bocaccio_rreas", "chilipepper_rreas", "halfbanded_rreas", "shortbelly_rreas", "widow_rreas", "yellowtail_rreas")
+
+
+names(rreas_indices) <- c("canary_index", "chilipepper_index", "widow_index", "ytail_coast_index", "ytail_n_index")
+for(i in 1:length(names(rreas_indices))){
+  df <- rreas_indices[[i]]
+  df <- df %>%
+    mutate(response = est,
+           year = YEAR) %>% 
+    select(year, response)
+  
+  rreas_indices[[i]] <- df
+}
+
+
+
+# combine into one list
+heatwave_species_df <- c(rreas_ts, rreas_indices, recdev_df)
+
+
+## ML ----------------------------------------------------------------------
+heatwave_ml_before <- list()
+heatwave_ml_after <- list()
+for(i in 1:length(names(heatwave_species_df))){
+  df <- heatwave_species_df[[i]]
+  
+  df_before <- df %>% 
+    filter(year >= 1991) %>% 
+    filter(year < 2014)
+  
+  df_after <- df %>% 
+    filter(year >= 2014) %>% 
+    filter(year <= 2020)
+  
+  heatwave_ml_before[[i]] <- get_CMISST_index(df_before, oceanData = oceanMLData,
+                                              years = df_before$year, years.fit = df_before$year)
+  
+  heatwave_ml_after[[i]] <- get_CMISST_index(df_after, oceanData = oceanMLData,
+                                              years = df_after$year, years.fit = df_after$year)
+}
+
+saveRDS(heatwave_ml_before, file = here("data/processed/heatwave_before_cmisst_ml.rds"))
+saveRDS(heatwave_ml_after, file = here("data/processed/heatwave_after_cmisst_ml.rds"))
+
+# # # Species spawning biomass ------------------------------------------------
+# # ## Create data frame -------------------------------------------------------------
+# clean_rec_devs <- readRDS(here("data/clean_rec_devs.rds"))
 # 
 # species <- unique(clean_rec_devs$short_name)
 # 
 # species_df <- list()
 # for(i in 1:length(species)){
 #   sp <- species[i]
-#   
-#   df <- clean_rec_devs %>% 
-#     filter(short_name == sp) %>% 
-#     mutate(SpawnBio.scaled = as.vector(scale(SpawnBio))) %>% 
+# 
+#   df <- clean_rec_devs %>%
+#     filter(short_name == sp) %>%
+#     mutate(SpawnBio.scaled = as.vector(scale(SpawnBio))) %>%
 #     filter(Yr >= 1980)
-#   
+# 
 #   species_df[[i]] <- df
-#   
+# 
 # }
 # names(species_df) <- species
 # 
@@ -763,15 +1026,15 @@ for(i in 1:length(species)){
 # species_df$Cabezon_NCA$Yr[40] <- 2020
 # # going to trim some species time series because they jump around and that won't work with cmisst function
 # 
-# # cabezon OR to just 2015 since it skips from 2015 to 2020 
+# # cabezon OR to just 2015 since it skips from 2015 to 2020
 # species_df$Cabezon_OR <- species_df$Cabezon_OR[-37,]
 # species_df$`Gopher/black-and-yellow_rockfish` <- species_df$`Gopher/black-and-yellow_rockfish`[-40,]
 # 
 # 
 # # save as separate rds file for later
 # write_rds(species_df, file = here("data/species_assessment_sb_rec.rds"))
-# 
-# 
+# # 
+# # 
 # ## SSH ---------------------------------------------------------------------
 # # get cmisst ssh for each species
 # species_cmisst_ssh <- list()

@@ -1,0 +1,32 @@
+index_stock,species,min_depth,max_depth,COG,peak_spawn,peak_spawn2,spawning_frequency,type,larvae,avg_settlement_age_mo
+bocaccio_core_index,bocaccio,54,80,39.4,2,NA,NA,core index,,3.5
+chilipepper_core_index,chilipepper,27,190,38.5,0,2,NA,core index,,3.5
+halfbanded_core_index,half,32,220,34.5,2,NA,once,core index,,NA
+shortbelly_core_index,shortbelly,50,155,39.7,2,NA,NA,core index,,3
+widow_core_index,widow,55,160,40.6,2,NA,NA,core index,,5
+ytail_core_index,yellowtail,27,160,47.4,2,3,NA,core index,,3.5
+canary_index,canary,50,100,45,4,NA,once,non-core index,,3.5
+chilipepper_index,chilipepper,27,190,38.5,0,1,NA,non-core index,,3.5
+widow_index,widow,55,160,40.6,1,4,NA,non-core index,,5
+ytail_coast_index,yellowtail,27,160,47.4,1,4,NA,non-core index,,3.5
+ytail_N_index,yellowtail,27,160,47.4,1,4,NA,non-core index,,3.5
+black_WA_recdev,black,0,30,NA,1,5,once,recdev,,5
+black_CA_recdev,black,0,30,NA,1,5,once,recdev,,5
+blue_deacon_CA_recdev,blue deacon,13,50,NA,1,2,multiple,recdev,,4
+bocaccio_recdev,bocaccio,54,80,39.4,1,2,NA,recdev,,3.5
+cabezon_OR_recdev,cabezon,0,27,NA,3,4,NA,recdev,,2.5
+cabezon_NCA_recdev,cabezon,0,27,NA,1,2,NA,recdev,,2.5
+cabezon_SCA_recdev,cabezon,0,27,NA,1,2,NA,recdev,,2.5
+california_scorpionfish_recdev,california scorpionfish,0,100,38.5,7,NA,NA,recdev,,
+chilipepper_recdev,chilipepper,27,190,39.4,1,2,NA,recdev,,3.5
+gopher_black_and_yellow_recdev,gopher black-and-yellow,5,20,NA,5,NA,once,recdev,,3
+kelp_greenling_OR_recdev,kelp greenling,0,10,NA,9,12,multiple,recdev,,9
+longspine_thornyhead_recdev,longspine thornyhead,320,550,39.7,2,4,multiple,recdev,,19
+pacific_ocean_perch_recdev,pacific ocean perch,110,250,46.5,2,5,NA,recdev,pelagic,12
+rougheye_blackspotted_recdev,rougheye blackspotted,27,250,45.6,2,6,NA,recdev,,NA
+ytail_N_recdev,yellowtail,27,160,47.4,1,4,NA,recdev,,3.5
+ytail_S_recdev,yellowtail,27,160,47.4,2,3,NA,recdev,,3.5
+shortspine_thornyhead_recdev,shortspine thornyhead,55,550,40.5,4,NA,multiple,recdev,,14.5
+widow_recdev,widow,55,160,40.6,1,4,NA,recdev,,5
+yelloweye_recdev,yelloweye,27,220,NA,4,8,multiple,recdev,,NA
+black_OR_recdev,black,0,30,NA,1,5,once,recdev,,5
